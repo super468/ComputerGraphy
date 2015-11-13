@@ -1,0 +1,129 @@
+package BezierTest;
+import java.awt.*;
+
+//import java.awt.event.*;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.swing.*;
+public class BezierTest extends JFrame{
+	private static final long serialVersionUID = 1L;
+	public static void main(String[] args){
+		
+		//用正则表达式读取字符串，并转化成double型的点
+		String s=JOptionPane.showInputDialog(null,"请输入特征多边形各点,用括号扩起并用逗号隔开！左下角为（0，0）");
+		Pattern p=Pattern.compile("\\d+");
+		Matcher m=p.matcher(s);
+		List<String> an=new ArrayList<String>();
+		while(m.find()){
+			an.add(m.group());
+		}
+		int count=0;
+		
+		MyComponent.Initcp();
+		for(int i=0;i<an.size();i+=2){
+			MyComponent.setcp(Double.parseDouble(an.get(i)),Double.parseDouble(an.get(i+1)),count++);
+		}
+		BezierTest frame=new BezierTest();
+		frame.setTitle("Bezier曲线");
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setVisible(true);
+	}
+	
+	BezierTest(){
+		add(new MyComponent());
+		pack();
+		
+	}
+}
+
+class MyComponent extends JComponent{
+	
+	private static final long serialVersionUID = 1L;	//控制版本兼容
+	private static final int DEFUALT_WIDTH=400;
+	private static final int DEFUALT_HEIGHT=400;
+	private int CURVE_LENGTH=5000;		//输出点的内存字长
+	private static int CP_LENGTH=10;		//输入点的内存字长
+	private int numberOfPoints=4900;		//输出的点数
+	private static Point2D.Double[] cp=new Point2D.Double[CP_LENGTH];
+	private Point2D.Double[] curve=new Point2D.Double[CURVE_LENGTH];
+	private static int index=0;
+	
+	//给输入点分配内存空间
+	public static void Initcp(){
+		for(int i=0;i<CP_LENGTH;i++){
+			cp[i]=new Point2D.Double();
+		}
+	}
+	
+	//给输出点分配内存空间
+	public void Initcurve(){
+		for(int i=0;i<CURVE_LENGTH;i++){
+			curve[i]=new Point2D.Double();
+		}
+	}
+	
+	//给输入点赋值
+	public static void setcp(double x,double y,int i){
+		MyComponent.cp[i].x=x;
+		MyComponent.cp[i].y=y;
+		index=i;
+	}
+	
+	//T时刻的N阶贝赛尔曲线的点
+	public class Point{
+		Point2D.Double point;
+		int n;//阶数
+		int i;//控制点号
+		Point(){
+			point=new Point2D.Double();
+			n=0;i=0;
+		}
+	}
+
+	//deCasteljau递归算法  (Pn,i=(1-t)*Pn-1,i+t*Pn-1,i+1)
+	public Point deCasteljau(Point p,double t){
+		if(p.n>1){
+			Point p1=new Point();
+			Point p2=new Point();
+			p1.n=p.n-1;p1.i=p.i;
+			p2.n=p.n-1;p2.i=p.i+1;
+			deCasteljau(p1,t);
+			deCasteljau(p2,t);
+			p.point.x=(1-t)*p1.point.x+t*p2.point.x;
+			p.point.y=(1-t)*p1.point.y+t*p2.point.y;
+			return p;
+		}else{
+			p.point.x=(1-t)*cp[p.i].x+t*cp[p.i+1].x;
+			p.point.y=(1-t)*cp[p.i].y+t*cp[p.i+1].y;
+			return p;
+		}
+	}
+	
+	public void paintComponent(Graphics g){
+		double dt;
+	    int i;
+	    Initcurve();
+	    Point p=new Point();
+	    
+	    p.i=0;p.n=index;//n阶贝赛尔曲线点
+	    
+	    //画贝赛尔曲线
+	    dt=1.0/(numberOfPoints-1);
+	    for(i=0;i<numberOfPoints;i++){
+	        curve[i]=deCasteljau(p,i*dt).point;//i*dt表示t
+	    	g.drawLine((int)curve[i].x, 400-(int)curve[i].y, (int)curve[i].x, 400-(int)curve[i].y);
+	    }
+	    //画特征多边形
+	    for(int j=0;j<index;j++){
+	    	g.drawLine((int)cp[j].x, 400-(int)cp[j].y, (int)cp[j+1].x, 400-(int)cp[j+1].y);
+	    }
+		
+	}
+	public Dimension getPreferredSize(){
+		return new Dimension(DEFUALT_WIDTH,DEFUALT_HEIGHT);
+	}
+}
